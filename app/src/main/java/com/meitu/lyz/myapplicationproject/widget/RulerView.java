@@ -7,33 +7,26 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.support.annotation.Nullable;
-import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.animation.LinearOutSlowInInterpolator;
-import android.support.v4.widget.ScrollerCompat;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.LinearInterpolator;
 import android.widget.OverScroller;
-import android.widget.Scroller;
 
 import com.meitu.lyz.myapplicationproject.util.ConvertUtils;
 
 import java.text.DecimalFormat;
 
 
-public class RulerView extends View implements GestureDetector.OnGestureListener {
+public class RulerView extends View {
     private static final String TAG = "RulerView";
 
     private Context mContext;
     private boolean isHorizontal = true;
-    private GestureDetectorCompat gestureDetector;
 
     private String mUnit = "kg";
     private double mCurrentVale = 12.3;
@@ -70,11 +63,7 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     private int mMaximumVelocity, mMinimumVelocity;
 
 
-    private float mCurrentX, mLastX;
-
-    private boolean isScrolling = false;
-    private boolean isFlinging = false;
-    private boolean isScrollingBack = false;
+    private float mCurrentX, mLastX, mLastScrollerX;
 
 
     private Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -93,14 +82,10 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     public RulerView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         mContext = context;
-        initGestureDetector();
+        initScroller();
         initAttr();
 
-        mMaximumVelocity = ViewConfiguration.get(context)
-                .getScaledMaximumFlingVelocity();
-        mMinimumVelocity = ViewConfiguration.get(context)
-                .getScaledMinimumFlingVelocity();
-        mScroller = new OverScroller(mContext, new LinearOutSlowInInterpolator());
+
     }
 
     @Override
@@ -158,13 +143,16 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     }
 
 
-    private void initGestureDetector() {
+    private void initScroller() {
         setClickable(true);
         setFocusable(true);
         setLongClickable(true);
-        gestureDetector = new GestureDetectorCompat(mContext, this);
 
-
+        mMaximumVelocity = ViewConfiguration.get(mContext)
+                .getScaledMaximumFlingVelocity();
+        mMinimumVelocity = ViewConfiguration.get(mContext)
+                .getScaledMinimumFlingVelocity();
+        mScroller = new OverScroller(mContext, new LinearOutSlowInInterpolator());
     }
 
     private void drawCenterText(Canvas canvas) {
@@ -198,10 +186,6 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     }
 
     private void drawLines(Canvas canvas) {
-//        canvas.save();
-//
-//        if (Math.floor(Math.abs(mScrollX) / mLineMargin) == 0)
-//            canvas.translate((float) -mScrollX, 0);
         paint.setStrokeWidth(mNormalWidth);
         paint.setColor(mLineColor);
 
@@ -232,46 +216,7 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
 
         }
 
-//        canvas.restore();
 
-    }
-
-
-    @Override
-    public boolean onDown(MotionEvent e) {
-        Log.d(TAG, "onDown: ");
-        return false;
-    }
-
-    @Override
-    public void onShowPress(MotionEvent e) {
-        Log.d(TAG, "onShowPress: ");
-    }
-
-    @Override
-    public boolean onSingleTapUp(MotionEvent e) {
-        Log.d(TAG, "onSingleTapUp: ");
-        return true;
-    }
-
-    @Override
-    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-        Log.d(TAG, "onScroll: ");
-        scroll(distanceX);
-        return true;
-    }
-
-    @Override
-    public void onLongPress(MotionEvent e) {
-        Log.d(TAG, "onLongPress: ");
-    }
-
-    @Override
-    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-        Log.d(TAG, "onFling: ");
-        fling((int) -velocityX);
-        isScrolling = true;
-        return true;
     }
 
 
@@ -279,38 +224,36 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     public boolean onTouchEvent(MotionEvent event) {
         Log.d(TAG, "onTouchEvent: ");
 
-//        if (mVelocityTracker == null)
-//            mVelocityTracker = VelocityTracker.obtain();
-//        mVelocityTracker.addMovement(event);
-//
-//        switch (event.getAction()) {
-//            case MotionEvent.ACTION_DOWN:
-//                mLastX = event.getX();
-//                break;
-//            case MotionEvent.ACTION_MOVE:
-//                float distance = event.getX() - mLastX;
-//                mLastX = event.getX();
-//                scroll(distance);
-//                break;
-//            case MotionEvent.ACTION_UP:
-//                mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-//                int velocityX = (int) mVelocityTracker.getXVelocity();
-//                if (Math.abs(velocityX) > mMinimumVelocity) {
-//                    fling(-velocityX);
-//                } else {
-//                    scrollBackToCorrectPos();
-//                }
-//
-//                mVelocityTracker.clear();
-//                break;
-//        }
+        if (mVelocityTracker == null)
+            mVelocityTracker = VelocityTracker.obtain();
+        mVelocityTracker.addMovement(event);
 
-//
-        gestureDetector.onTouchEvent(event);
-        if (event.getAction() == MotionEvent.ACTION_UP) {
-            if (!isFlinging && mScrollX != 0)
-                scrollBackToCorrectPos();
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                if (!mScroller.isFinished()) {
+                    mScroller.abortAnimation();
+                }
+
+                mLastX = isHorizontal ? event.getX() : event.getY();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                float distance = isHorizontal ? mLastX - event.getX() : mLastX - event.getY();
+                mLastX = isHorizontal ? event.getX() : event.getY();
+                scroll(distance);
+                break;
+            case MotionEvent.ACTION_UP:
+                mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                int velocityX = isHorizontal ? (int) mVelocityTracker.getXVelocity() : (int) mVelocityTracker.getYVelocity();
+                if (Math.abs(velocityX) > mMinimumVelocity) {
+                    fling(-velocityX);
+                } else {
+                    scrollBackToCorrectPos();
+                }
+
+                mVelocityTracker.clear();
+                break;
         }
+
         return true;
     }
 
@@ -318,95 +261,81 @@ public class RulerView extends View implements GestureDetector.OnGestureListener
     public void computeScroll() {
         Log.d(TAG, "computeScroll: ");
         if (mScroller.computeScrollOffset()) {
-            if (isScrollingBack) {
-                scrollBack(mScroller.getCurrX() - mScroller.getStartX());
-                if (mScroller.isFinished())
-                    isScrollingBack = false;
-            } else {
-                scroll(mScroller.getCurrX() - mScroller.getStartX());
-                if (mScroller.isFinished()) {
-                    if (isFlinging)
-                        isFlinging = false;
-                    if (mScrollX != 0)
-                        scrollBackToCorrectPos();
-                }
-            }
-            invalidate();
+            Log.d(TAG, "computeScroll: Scroll");
+            float distance = isHorizontal ? mScroller.getCurrX() : mScroller.getCurrY() - mLastScrollerX;
+            scroll(distance);
+            mLastScrollerX = isHorizontal ? mScroller.getCurrX() : mScroller.getCurrY();
+            if (mScroller.isFinished() && mScrollX != 0)
+                scrollBackToCorrectPos();
         }
 
     }
 
     private void scroll(float distanceX) {
+        Log.d(TAG, "scroll: " + distanceX);
         mScrollX += distanceX;
         if ((mCurrentVale == mMinValue && distanceX <= 0) ||
                 (mCurrentVale == mMaxValue && distanceX >= 0)) {
             mScrollX = 0;
         } else {
 
-            if (mScrollX >= 0)
-                mCurrentVale += Math.round(mScrollX / mLineMargin) * mUnitValue;
-            else
-                mCurrentVale -= Math.round(-mScrollX / mLineMargin) * mUnitValue;
+            if (mScrollX > 0) {
+                mScrollX = Math.round(mScrollX);
+                mCurrentVale += Math.floor(mScrollX / mLineMargin) * mUnitValue;
+            } else {
+                mScrollX = -Math.round(-mScrollX);
+                mCurrentVale -= Math.floor(-mScrollX / mLineMargin) * mUnitValue;
+            }
 
             DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
             mCurrentVale = Double.parseDouble(format.format(mCurrentVale));
-
             if (mCurrentVale <= mMinValue) {
                 mCurrentVale = mMinValue;
             } else if (mCurrentVale >= mMaxValue)
                 mCurrentVale = mMaxValue;
 
-            if (mScrollX > 0)
-                mScrollX %= mLineMargin;
-            else
-                mScrollX %= -mLineMargin;
+            mScrollX %= mLineMargin;
             invalidate();
         }
 
 
     }
 
-    private void scrollBack(float distanceX) {
-//        if ((mScrollX >= 0 && distanceX >= 0) || (mScrollX <= 0 && distanceX <= 0))
-//            mScrollX -= distanceX;
-//        else mScrollX += distanceX;
-
-        mScrollX += distanceX;
-        invalidate();
-
-    }
 
     private void fling(int velocity) {
-        isFlinging = true;
-        if (!mScroller.isFinished())
-            if (isHorizontal)
-                mScroller.fling(0, 0, velocity, 0, -mMaxUnitValue * mLineMargin, mMaxUnitValue * mLineMargin, 0, 0);
-            else
-                mScroller.fling(0, 0, 0, velocity, 0, 0, -mMaxUnitValue * mLineMargin, mMaxUnitValue * mLineMargin);
+        mLastScrollerX = 0;
+        if (isHorizontal)
+            mScroller.fling(0, 0, velocity, 0, -mMaxUnitValue * mLineMargin, mMaxUnitValue * mLineMargin, 0, 0);
+        else
+            mScroller.fling(0, 0, 0, velocity, 0, 0, -mMaxUnitValue * mLineMargin, mMaxUnitValue * mLineMargin);
         invalidate();
 
     }
 
     private void scrollBackToCorrectPos() {
         double scroll;
+        mScrollX %= mLineMargin;
         if (mScrollX > 0) {
-            mCurrentVale += Math.round(mScrollX / mLineMargin) * mUnitValue;
-            if (mScrollX < mLineMargin / 2)
+            if (mScrollX <= mLineMargin / 2)
                 scroll = -mScrollX;
-            else scroll = mLineMargin - mScrollX;
+            else {
+                scroll = mLineMargin - mScrollX;
+            }
         } else {
-            mCurrentVale -= Math.round(-mScrollX / mLineMargin) * mUnitValue;
-            if (-mScrollX < mLineMargin / 2)
+            if (-mScrollX <= mLineMargin / 2)
                 scroll = -mScrollX;
             else scroll = -(mLineMargin + mScrollX);
         }
 
-        DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
-        mCurrentVale = Double.parseDouble(format.format(mCurrentVale));
 
-        isScrollingBack = true;
-        mScroller.startScroll(0, 0, (int) scroll, 0);
+        Log.d(TAG, "scrollBackToCorrectPos: " + scroll + " mScrollX " + mScrollX);
+        mLastScrollerX = 0;
+        if (isHorizontal)
+            mScroller.startScroll(0, 0, (int) scroll, 0);
+        else
+            mScroller.startScroll(0, 0, 0, (int) scroll);
         invalidate();
     }
+    
 
 }
