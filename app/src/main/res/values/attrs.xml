@@ -1,33 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <declare-styleable name="slideruler">
-        <!--最小值-->
-        <attr name="min_value" format="integer"/>
-        <!--最大值-->
-        <attr name="max_value" format="integer"/>
-        <!--当前值-->
-        <attr name="current_value" format="integer"></attr>
-        <!--最小单位值-->
-        <attr name="min_unitValue" format="integer"></attr>
-        <!--最小当前值-->
-        <attr name="min_currentValue" format="integer"></attr>
-        <!--数值字体大小-->
-        <attr name="textSize" format="dimension"></attr>
-        <!---数值字体颜色-->
-        <attr name="textColor" format="integer"></attr>
-        <!--底部和刻度的线颜色-->
-        <attr name="dividerColor" format="integer"></attr>
-        <!--指示器的颜色-->
-        <attr name="indicatrixColor" format="integer"></attr>
-        <!--一屏显示Item-->
-        <attr name="show_itemSize" format="integer" ></attr>
-        <!--刻度和数值的间距-->
-        <attr name="margin_cursor_data" format="dimension"></attr>
-        <!--长指针大小-->
-        <attr name="longCursor" format="dimension"></attr>
-        <!--短指针大小-->
-        <attr name="shortCursor" format="dimension"></attr>
+    <declare-styleable name="RulerView">
+        <attr name="orientation">
+            <enum name="horizontal" value="0" />
+            <enum name="vertical" value="1" />
+        </attr>
+
+        <attr name="unit" format="string" />
+        <attr name="unitValue" format="integer" />
+        <attr name="unitCount" format="integer" />
+        <attr name="value" format="float" />
+
+        <attr name="lineColor" format="color" />
+        <attr name="textColor" format="color" />
+        <attr name="lineMargin" format="dimension" />
+        <attr name="lineBoldWidth" format="dimension" />
+        <attr name="lineNormalWidth" format="dimension" />
+        <attr name="lineMaxLength" format="dimension" />
+        <attr name="lineNormalLength" format="dimension" />
+        <attr name="lineLongLength" format="dimension" />
+        <attr name="textValueMargin" format="dimension" />
+        <attr name="largeTextSize" format="dimension" />
+        <attr name="smallTextSize" format="dimension" />
+
+        <attr name="minValue" format="float" />
+        <attr name="maxValue" format="float" />
+
+
+        <attr name="openCorrection" format="boolean" />
+
+        <attr name="rulerGravity">
+            <enum name="top" value="0" />
+            <enum name="bottom" value="1" />
+            <enum name="left" value="2" />
+            <enum name="right" value="3" />
+        </attr>
+
     </declare-styleable>
 
 </resources>
