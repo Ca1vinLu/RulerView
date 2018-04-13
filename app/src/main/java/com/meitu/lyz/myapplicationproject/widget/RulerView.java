@@ -25,64 +25,93 @@ import com.meitu.lyz.myapplicationproject.util.ConvertUtils;
 import java.text.DecimalFormat;
 
 
+/**
+ * The type Ruler view.
+ */
 public class RulerView extends View {
     private static final String TAG = "RulerView";
 
+    //尺相对于整个View的位置，水平尺只能为TOP|BOTTOM，垂直尺只能为LEFT|RIGHT
     public static final int RULER_GRAVITY_TOP = 0;
     public static final int RULER_GRAVITY_BOTTOM = 1;
     public static final int RULER_GRAVITY_LEFT = 2;
     public static final int RULER_GRAVITY_RIGHT = 3;
-
-    private Context mContext;
-    private boolean isHorizontal = true;
     private int mRulerGravity = RULER_GRAVITY_TOP;
 
+    private Context mContext;
+
+    //尺的方向
+    private boolean isHorizontal = true;
+    //是否开启校准
+    private boolean openCorrection = true;
+
+    //刻度单位
     private String mUnit = "kg";
-    private double mCurrentVale = 12.3;
-    private double mUnitValue = 0.1;
-    private int mUnitCount = 5;
+    //当前刻度值
+    private double mCurrentVale;
+    //单位值
+    private double mUnitValue;
+    //长刻度的间隔
+    private int mValueInterval;
+    //刻度文字的间隔
+    private int mTextInterval;
 
-    private int mLineColor;
-    private int mLineMargin = 8;
-
+    //中间标识线的宽度
     private int mBoldWidth = 2;
+    //刻度线的宽度
     private int mNormalWidth = 1;
 
+    //中间标识线的长度
     private int mMaxLength = 24;
+    //短刻度线的长度
     private int mNormalLength = 12;
+    //长刻度线的长度
     private int mLongLength = 18;
 
+    //View的宽高
     private int mMeasuredWidth;
     private int mMeasuredHeight;
+    //中间线的位置
     private int mCenterXY;
 
+    //屏幕的宽高
     private int mDisplayWidth;
     private int mDisplayHeight;
 
+    //文字和刻度线的颜色
+    private int mLineColor;
     private int mTextColor;
+    //刻度线的间距
+    private int mLineMargin = 8;
+    //尺和刻度值文字的间距
     private int mTextValueMargin = 10;
+
+    //中间刻度值文字的大小
     private int mLargeTextSize = 16;
+    //两边刻度值文字的大小
     private int mSmallTextSize = 12;
 
+    //可显示的最大刻度数
     private int mLineItems;
-    private double mMinValue = 0;
-    private double mMaxValue = 100;
-    private int mMinUnitValue = (int) (mMinValue / mUnitValue);
-    private int mMaxUnitValue = (int) (mMaxValue / mUnitValue);
-    private double mScrollXY = 0;
-
-    private boolean openCorrection = true;
-
-    private int mMaximumVelocity, mMinimumVelocity;
+    //刻度最大最小值
+    private double mMinValue;
+    private double mMaxValue;
+    //换算后的刻度最大最小单位值
+    private int mMinUnitValue;
+    private int mMaxUnitValue;
 
 
-    private float mCurrentXY, mLastXY, mLastScrollerXY;
+    //偏移值
+    private double mScrollXY;
+    //滑动中的当前坐标值及scroller计算的当前值
+    private float mLastXY, mLastScrollerXY;
 
 
     private Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private OverScroller mScroller;
     private VelocityTracker mVelocityTracker;
+    private int mMaximumVelocity, mMinimumVelocity;
 
     public RulerView(Context context) {
         this(context, null);
@@ -106,6 +135,8 @@ public class RulerView extends View {
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         mMeasuredWidth = MeasureSpec.getSize(widthMeasureSpec);
         mMeasuredHeight = MeasureSpec.getSize(heightMeasureSpec);
+
+        //计算View的宽高
         if (isHorizontal) {
             if (widthMode != MeasureSpec.EXACTLY)
                 mMeasuredWidth = mDisplayWidth;
@@ -142,11 +173,11 @@ public class RulerView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-
         drawCenterText(canvas);
         drawBaseLine(canvas);
         drawLines(canvas);
     }
+
 
     private void initAttr(AttributeSet attrs) {
         TypedArray typedArray = mContext.obtainStyledAttributes(attrs, R.styleable.RulerView);
@@ -157,13 +188,18 @@ public class RulerView extends View {
             mUnit = "kg";
         mUnitValue = typedArray.getInt(R.styleable.RulerView_unitValue, -1);
         mUnitValue = Math.pow(10, mUnitValue);
-        mUnitCount = typedArray.getInt(R.styleable.RulerView_unitCount, mUnitCount);
+        mValueInterval = typedArray.getInt(R.styleable.RulerView_valueInterval, 5);
+        mTextInterval = typedArray.getInt(R.styleable.RulerView_textInterval, 10);
         mMaxValue = typedArray.getFloat(R.styleable.RulerView_maxValue, 100f);
         mMinValue = typedArray.getFloat(R.styleable.RulerView_minValue, 0f);
         mCurrentVale = typedArray.getFloat(R.styleable.RulerView_value, (float) ((mMaxValue + mMinValue) / 2));
 
         DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
         mCurrentVale = Double.parseDouble(format.format(mCurrentVale));
+        mMaxValue = Double.parseDouble(format.format(mMaxValue));
+        mMinValue = Double.parseDouble(format.format(mMinValue));
+        mMinUnitValue = (int) (mMinValue / mUnitValue);
+        mMaxUnitValue = (int) (mMaxValue / mUnitValue);
 
         mLineColor = typedArray.getColor(R.styleable.RulerView_lineColor, Color.parseColor("#294383"));
         mTextColor = typedArray.getColor(R.styleable.RulerView_textColor, Color.parseColor("#294383"));
@@ -200,11 +236,13 @@ public class RulerView extends View {
             mPaint.setTextAlign(Paint.Align.RIGHT);
     }
 
+    /**
+     * 初始化scroller 使用加速度递减插值器
+     * 初始化fling速度值
+     */
+
 
     private void initScroller() {
-        setClickable(true);
-        setFocusable(true);
-        setLongClickable(true);
 
         mMaximumVelocity = ViewConfiguration.get(mContext)
                 .getScaledMaximumFlingVelocity();
@@ -212,6 +250,10 @@ public class RulerView extends View {
                 .getScaledMinimumFlingVelocity();
         mScroller = new OverScroller(mContext, new LinearOutSlowInInterpolator());
     }
+
+    /**
+     * 绘制中间的当前数值
+     */
 
     private void drawCenterText(Canvas canvas) {
         String s = mCurrentVale + mUnit;
@@ -231,6 +273,14 @@ public class RulerView extends View {
         else if (!isHorizontal && mRulerGravity == RULER_GRAVITY_RIGHT)
             canvas.drawText(s, mMeasuredWidth - (mMaxLength + mTextValueMargin), mCenterXY, mPaint);
     }
+
+    /**
+     * 绘制坐标文字
+     *
+     * @param alpha   透明度 [0-255]
+     * @param startXY 偏移值
+     * @param value   刻度值
+     */
 
     private void drawText(Canvas canvas, double value, int startXY, int alpha) {
 
@@ -260,6 +310,10 @@ public class RulerView extends View {
 
     }
 
+    /**
+     * 绘制中间的基准线
+     */
+
     private void drawBaseLine(Canvas canvas) {
 
         mPaint.setAlpha(255);
@@ -276,26 +330,35 @@ public class RulerView extends View {
             canvas.drawLine(mMeasuredWidth, mCenterXY, mMeasuredWidth - mMaxLength, mCenterXY, mPaint);
     }
 
+    /**
+     * 绘制刻度线
+     */
+
     private void drawLines(Canvas canvas) {
 
         mPaint.setStrokeWidth(mNormalWidth);
 
 
+        //计算中间基准线前半部分最多能绘制的刻度线数，及开始的数值
         int halfNum = mCenterXY / mLineMargin;
         int currentUnitValue = (int) Math.ceil(mCurrentVale / mUnitValue);
         int startUnitValue = currentUnitValue - halfNum;
 
+        //计算开始绘制的第一条刻度线的坐标值
         int startXY = (int) (mCenterXY - halfNum * mLineMargin - mScrollXY);
+
         for (int i = 0; i < mLineItems; i++, startUnitValue++, startXY += mLineMargin) {
+            //若当前单位值在数值范围内则进行绘制
             if (startUnitValue >= mMinUnitValue && startUnitValue <= mMaxUnitValue) {
 
+                //计算透明度，透明度根据距离中间基准线的位置线性计算
                 int alpha = 255 - 255 * Math.abs(startXY - mCenterXY) / mCenterXY;
                 alpha = alpha >= 0 ? alpha : 0;
                 mPaint.setColor(mLineColor);
                 mPaint.setAlpha(alpha);
 
-                if (startUnitValue % mUnitCount == 0) {
-
+                if (startUnitValue % mValueInterval == 0) {
+                    //绘制长刻度线
                     if (isHorizontal && mRulerGravity == RULER_GRAVITY_TOP)
                         canvas.drawLine(startXY, 0, startXY, mLongLength, mPaint);
                     else if (isHorizontal && mRulerGravity == RULER_GRAVITY_BOTTOM)
@@ -305,12 +368,12 @@ public class RulerView extends View {
                     else if (!isHorizontal && mRulerGravity == RULER_GRAVITY_RIGHT)
                         canvas.drawLine(mMeasuredWidth, startXY, mMeasuredWidth - mLongLength, startXY, mPaint);
 
-
-                    if (startUnitValue % 10 == 0) {
+                    //绘制刻度值
+                    if (startUnitValue % mTextInterval == 0) {
                         drawText(canvas, startUnitValue * mUnitValue, startXY, alpha);
                     }
                 } else {
-
+                    //绘制短刻度线
                     if (isHorizontal && mRulerGravity == RULER_GRAVITY_TOP)
                         canvas.drawLine(startXY, 0, startXY, mNormalLength, mPaint);
                     else if (isHorizontal && mRulerGravity == RULER_GRAVITY_BOTTOM)
@@ -340,24 +403,28 @@ public class RulerView extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                //按下屏幕时，若scroller还未停止计算，则立即终止计算
                 if (!mScroller.isFinished()) {
                     mScroller.abortAnimation();
                 }
-
                 mLastXY = isHorizontal ? event.getX() : event.getY();
                 break;
             case MotionEvent.ACTION_MOVE:
+                //滑动手势
                 float distance = isHorizontal ? mLastXY - event.getX() : mLastXY - event.getY();
                 mLastXY = isHorizontal ? event.getX() : event.getY();
                 scroll(distance);
                 break;
             case MotionEvent.ACTION_UP:
+                //当手指离开屏幕时，计算滑动速度，满足fling手势则进行相应处理，否则直接判断是否需要校准
                 mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
                 int velocityX = isHorizontal ? (int) mVelocityTracker.getXVelocity() : (int) mVelocityTracker.getYVelocity();
                 if (Math.abs(velocityX) > mMinimumVelocity) {
                     fling(-velocityX);
-                } else if (openCorrection) {
-                    scrollBackToCorrectPos();
+                } else if (openCorrection && mScrollXY != 0) {
+                    mScrollXY %= mLineMargin;
+                    if (mScrollXY != 0)
+                        scrollBackToCorrectPos();
                 }
 
                 mVelocityTracker.clear();
@@ -371,24 +438,38 @@ public class RulerView extends View {
     public void computeScroll() {
         Log.d(TAG, "computeScroll: ");
         if (mScroller.computeScrollOffset()) {
-            Log.d(TAG, "computeScroll: Scroll");
+
+            //根据scroller计算的值进行偏移，并记录当前scroller的偏移值
             float distance = isHorizontal ? mScroller.getCurrX() - mLastScrollerXY : mScroller.getCurrY() - mLastScrollerXY;
             scroll(distance);
             mLastScrollerXY = isHorizontal ? mScroller.getCurrX() : mScroller.getCurrY();
-            if (openCorrection && mScroller.isFinished() && mScrollXY != 0)
-                scrollBackToCorrectPos();
+
+            //若开启了校准且scroller计算已结束且最终的偏移值不为0，则进行校准
+            if (openCorrection && mScroller.isFinished() && mScrollXY != 0) {
+                mScrollXY %= mLineMargin;
+                if (mScrollXY != 0)
+                    scrollBackToCorrectPos();
+            }
         }
 
     }
 
-    private void scroll(float distanceX) {
-        Log.d(TAG, "scroll: " + distanceX);
-        mScrollXY += distanceX;
-        if ((mCurrentVale == mMinValue && distanceX <= 0) ||
-                (mCurrentVale == mMaxValue && distanceX >= 0)) {
+    /**
+     * 计算偏移后的数值并重新计算偏移值
+     * 若当前值已为最大值或最小值则不进行偏移
+     */
+
+
+    private void scroll(float distanceXY) {
+        Log.d(TAG, "scroll: " + distanceXY);
+        mScrollXY += distanceXY;
+        //若当前值已为最大值或最小值则不进行偏移，并将偏移值归零
+        if ((mCurrentVale == mMinValue && distanceXY <= 0) ||
+                (mCurrentVale == mMaxValue && distanceXY >= 0)) {
             mScrollXY = 0;
         } else {
 
+            //计算偏移后的数值并校准格式
             if (mScrollXY > 0) {
                 mScrollXY = Math.round(mScrollXY);
                 mCurrentVale += Math.floor(mScrollXY / mLineMargin) * mUnitValue;
@@ -399,18 +480,31 @@ public class RulerView extends View {
 
             DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
             mCurrentVale = Double.parseDouble(format.format(mCurrentVale));
+
+            //若偏移后的值超出范围，则进行校准
             if (mCurrentVale <= mMinValue) {
                 mCurrentVale = mMinValue;
             } else if (mCurrentVale >= mMaxValue)
                 mCurrentVale = mMaxValue;
 
+            //重新计算偏移值
             mScrollXY %= mLineMargin;
+
+            //若偏移后的值为最大值或最小值则不进行偏移，并将偏移值归零
+            if ((mCurrentVale == mMinValue && distanceXY <= 0) ||
+                    (mCurrentVale == mMaxValue && distanceXY >= 0)) {
+                mScrollXY = 0;
+            }
+
             invalidate();
         }
 
 
     }
 
+    /**
+     * 调用scroller的fling方法来处理fling手势的移动计算
+     */
 
     private void fling(int velocity) {
         mLastScrollerXY = 0;
@@ -422,9 +516,12 @@ public class RulerView extends View {
 
     }
 
+    /**
+     * 根据mScrollXY的值及四舍五入原则来计算校准偏移的位置
+     */
+
     private void scrollBackToCorrectPos() {
         double scroll;
-        mScrollXY %= mLineMargin;
         if (mScrollXY > 0) {
             if (mScrollXY <= mLineMargin / 2)
                 scroll = -mScrollXY;
@@ -469,6 +566,7 @@ public class RulerView extends View {
 
     public void setHorizontal(boolean horizontal) {
         isHorizontal = horizontal;
+        requestLayout();
     }
 
     public void setUnit(String mUnit) {
@@ -477,14 +575,16 @@ public class RulerView extends View {
 
     public void setCurrentVale(double mCurrentVale) {
         this.mCurrentVale = mCurrentVale;
+        DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
+        this.mCurrentVale = Double.parseDouble(format.format(mCurrentVale));
     }
 
-    public void setUnitValue(double mUnitValue) {
-        this.mUnitValue = mUnitValue;
+    public void setUnitValue(int mUnitValue) {
+        this.mUnitValue = Math.pow(10, mUnitValue);
     }
 
     public void setUnitCount(int mUnitCount) {
-        this.mUnitCount = mUnitCount;
+        this.mValueInterval = mUnitCount;
     }
 
     public void setLineColor(int mLineColor) {
@@ -505,14 +605,17 @@ public class RulerView extends View {
 
     public void setMaxLength(int mMaxLength) {
         this.mMaxLength = mMaxLength;
+        requestLayout();
     }
 
     public void setNormalLength(int mNormalLength) {
         this.mNormalLength = mNormalLength;
+        requestLayout();
     }
 
     public void setLongLength(int mLongLength) {
         this.mLongLength = mLongLength;
+        requestLayout();
     }
 
     public void setTextColor(int mTextColor) {
@@ -521,25 +624,43 @@ public class RulerView extends View {
 
     public void setTextValueMargin(int mTextValueMargin) {
         this.mTextValueMargin = mTextValueMargin;
+        requestLayout();
     }
 
     public void setLargeTextSize(int mLargeTextSize) {
         this.mLargeTextSize = mLargeTextSize;
+        requestLayout();
     }
 
     public void setSmallTextSize(int mSmallTextSize) {
         this.mSmallTextSize = mSmallTextSize;
+        requestLayout();
     }
 
     public void setMinValue(double mMinValue) {
         this.mMinValue = mMinValue;
+        DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
+        this.mMinValue = Double.parseDouble(format.format(mMinValue));
+        mMinUnitValue = (int) (mMinValue / mUnitValue);
     }
 
     public void setMaxValue(double mMaxValue) {
         this.mMaxValue = mMaxValue;
+        DecimalFormat format = new DecimalFormat(String.valueOf(mUnitValue));
+        this.mMaxValue = Double.parseDouble(format.format(mMaxValue));
+        mMaxUnitValue = (int) (mMaxValue / mUnitValue);
     }
 
     public void setOpenCorrection(boolean openCorrection) {
         this.openCorrection = openCorrection;
+    }
+
+    public int getRulerGravity() {
+        return mRulerGravity;
+    }
+
+    public void setRulerGravity(int mRulerGravity) {
+        this.mRulerGravity = mRulerGravity;
+        requestLayout();
     }
 }

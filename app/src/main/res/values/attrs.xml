@@ -9,7 +9,8 @@
 
         <attr name="unit" format="string" />
         <attr name="unitValue" format="integer" />
-        <attr name="unitCount" format="integer" />
+        <attr name="valueInterval" format="integer" />
+        <attr name="textInterval" format="integer" />
         <attr name="value" format="float" />
 
         <attr name="lineColor" format="color" />
