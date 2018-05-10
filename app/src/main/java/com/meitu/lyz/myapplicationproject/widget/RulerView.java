@@ -7,6 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.Nullable;
 import android.support.v4.view.animation.LinearOutSlowInInterpolator;
 import android.text.TextUtils;
@@ -399,8 +401,8 @@ public class RulerView extends View {
         int halfNum = mCenterXY / mLineMargin;
         int currentUnitValue = (int) Math.ceil(mCurrentVale / mUnitValue);
 
-        int interval = halfNum / mTextInterval;
-        if (interval == 0)
+        int interval = (int) Math.ceil(halfNum * 1f / mTextInterval - 1);
+        if (interval <= 0)
             return;
         interval *= mTextInterval;
 
@@ -692,5 +694,77 @@ public class RulerView extends View {
 
     public void setTextInterval(int mTextInterval) {
         this.mTextInterval = mTextInterval;
+    }
+
+    /**
+     * 状态保存 {@link SavedState}
+     */
+    @Nullable
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        Parcelable superInstanceState = super.onSaveInstanceState();
+        SavedState ss = new SavedState(superInstanceState);
+        ss.setCurrentVale(mCurrentVale);
+        return ss;
+    }
+
+    /**
+     * 状态恢复 {@link SavedState}
+     */
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        SavedState ss = (SavedState) state;
+        super.onRestoreInstanceState(ss.getSuperState());
+
+        mCurrentVale = ss.getCurrentVale();
+    }
+
+
+    /**
+     * SavedState 保存{@link #mCurrentVale}
+     */
+    static class SavedState extends BaseSavedState {
+
+        //当前刻度值
+        private double mCurrentVale;
+
+        public SavedState(Parcelable superState) {
+            super(superState);
+        }
+
+        protected SavedState(Parcel in) {
+            super(in);
+            mCurrentVale = in.readDouble();
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeDouble(mCurrentVale);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
+            @Override
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
+
+        public double getCurrentVale() {
+            return mCurrentVale;
+        }
+
+        public void setCurrentVale(double currentVale) {
+            mCurrentVale = currentVale;
+        }
     }
 }
